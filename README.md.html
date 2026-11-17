@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mandelbrot Emblem: Procedural 3D Terrain &amp; Metallic Gold Generator</title>
+    <!-- MathJax for rendering LaTeX mathematical formulas -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\(', '\)']],
+                displayMath: [['$$', '$$'], ['\[', '\]']]
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #1f2328;
+            --border-color: #d0d7de;
+            --subtle-bg: #f6f8fa;
+            --accent-gold: #b8860b;
+            --code-bg: #f6f8fa;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-color: #0d1117;
+                --text-color: #e6edf3;
+                --border-color: #30363d;
+                --subtle-bg: #161b22;
+                --accent-gold: #e5b842;
+                --code-bg: #161b22;
+            }
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+        h1, h2, h3 {
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.3em;
+            margin-top: 1.5em;
+            margin-bottom: 0.75em;
+            font-weight: 600;
+        }
+        h1 {
+            font-size: 2em;
+            margin-top: 0;
+        }
+        h2 {
+            font-size: 1.5em;
+        }
+        hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 1.5rem 0;
+        }
+        ul, ol {
+            padding-left: 2em;
+        }
+        li {
+            margin-bottom: 0.4em;
+        }
+        code {
+            font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+            font-size: 85%;
+            background-color: var(--code-bg);
+            padding: 0.2em 0.4em;
+            border-radius: 6px;
+        }
+        pre {
+            background-color: var(--code-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 16px;
+            overflow-x: auto;
+            font-size: 85%;
+            line-height: 1.45;
+        }
+        pre code {
+            background-color: transparent;
+            padding: 0;
+            border-radius: 0;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+        }
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 8px 13px;
+            text-align: left;
+        }
+        th {
+            background-color: var(--subtle-bg);
+            font-weight: 600;
+        }
+        tr:nth-child(even) {
+            background-color: var(--subtle-bg);
+        }
+        .badge {
+            display: inline-block;
+            padding: 0.25em 0.6em;
+            font-size: 0.8em;
+            font-weight: 600;
+            border-radius: 4px;
+            background-color: var(--subtle-bg);
+            border: 1px solid var(--border-color);
+            color: var(--accent-gold);
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="badge">Blender Python &bull; Procedural Generation &bull; NumPy &bull; Principled BSDF</div>
+    <h1>Mandelbrot Emblem: Procedural 3D Terrain &amp; Metallic Gold Generator</h1>
+    <p>The <strong>Mandelbrot Emblem</strong> is an advanced Blender Python script that procedurally computes high-resolution Mandelbrot fractal heightmaps via NumPy, generates displaced 3D topography meshes, builds a custom multi-stop metallic gold shader network, and automatically annotates spatial coordinates down to 7 decimal places.</p>
+
+    <hr>
+
+    <h2>Features</h2>
+    <ul>
+        <li><strong>NumPy-Accelerated Fractal Computation:</strong> Computes $z_{n+1} = z_n^2 + c$ across a $1280 	imes 1280$ grid with up to 3,000 iterations for deep mathematical fidelity.</li>
+        <li><strong>Non-Linear Height Shaping:</strong> Applies power-law scaling ($\gamma = 0.65$) to enhance topographic contrast between smooth escape basins and rugged fractal boundaries.</li>
+        <li><strong>Automated Blender Pipeline:</strong>
+            <ul>
+                <li>Generates and packs procedural image textures directly into the Blender data block.</li>
+                <li>Creates a dedicated high-subdivision grid mesh with real-time displacement mapping (<code>Z</code> direction).</li>
+                <li>Smooths shading across geometry boundaries.</li>
+            </ul>
+        </li>
+        <li><strong>Custom Metallic Gold Material:</strong> Implements a fully configured <code>Principled BSDF</code> shader linked to a custom <code>Color Ramp</code> mapping deep antique bronze shadows ($	ext{RGB}: 0.35, 0.22, 0.04$), rich metallic gold midtones ($	ext{RGB}: 0.85, 0.65, 0.13$), and bright specular highlights ($	ext{RGB}: 1.0, 0.92, 0.55$).</li>
+        <li><strong>Precision 3D Coordinate Markers:</strong> Automatically spawns a $6 	imes 6$ grid of floating 3D text objects anchored to the terrain surface, formatting exact complex plane coordinates (<code>X</code>, <code>Y</code>) to 7 decimal places.</li>
+    </ul>
+
+    <hr>
+
+    <h2>Technical Specifications</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Parameter</th>
+                <th>Value</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>Resolution</strong></td>
+                <td>$1280 	imes 1280$</td>
+                <td>Grid vertex density</td>
+            </tr>
+            <tr>
+                <td><strong>Complex Bounds</strong></td>
+                <td>$x \in [-0.7454297, -0.7454287]$<br>$y \in [-0.1130148, -0.1130135]$</td>
+                <td>Deep zoom window into the Mandelbrot set</td>
+            </tr>
+            <tr>
+                <td><strong>Max Iterations</strong></td>
+                <td>$3,000$</td>
+                <td>Iteration depth for height detail resolution</td>
+            </tr>
+            <tr>
+                <td><strong>Displacement Strength</strong></td>
+                <td>$2.8$</td>
+                <td>Peak-to-valley surface height scaling</td>
+            </tr>
+            <tr>
+                <td><strong>Metallic / Roughness</strong></td>
+                <td>$1.0 / 0.25$</td>
+                <td>Polished metallic gold reflectance profile</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <hr>
+
+    <h2>Installation &amp; Usage</h2>
+    <ol>
+        <li><strong>Open Blender:</strong> Launch Blender (v3.0 or higher recommended) and open the <strong>Scripting</strong> workspace.</li>
+        <li><strong>Create New Text Block:</strong> Click <strong>New</strong> in the text editor header.</li>
+        <li><strong>Paste Script:</strong> Copy and paste the Python script into the text editor.</li>
+        <li><strong>Run Script:</strong> Click the <strong>Run Script</strong> (play icon) button or press <code>Alt + P</code>.</li>
+    </ol>
+
+    <hr>
+
+    <h2>Script Architecture</h2>
+    <pre><code>[NumPy Complex Grid (c)] 
+       │
+       ▼
+[Mandelbrot Escape Loop (3000 Iterations)] 
+       │
+       ▼
+[Power Law Scaling (γ = 0.65)] ──► [Blender Image Data Block] 
+                                          │
+    ┌─────────────────────────────────────┴─────────────────────────────────────┐
+    ▼                                                                           ▼
+[Terrain Mesh Generation (1280² Grid)]                            [Material Node Network]
+    │                                                                           │
+    ├──► [Subdivision Surface Modifier]                                        ├──► [Texture Coordinate &amp; Mapping]
+    └──► [Displace Modifier (Z-Axis, Strength 2.8)]                            ├──► [Image Texture]
+                                                                                ├──► [Color Ramp (Antique to Highlight Gold)]
+                                                                                └──► [Principled BSDF (Metallic: 1.0, Roughness: 0.25)]</code></pre>
+
+    <hr>
+
+    <h2>Customization</h2>
+    <p>You can adjust the focal region by modifying the bounding box parameters in the script header:</p>
+    <pre><code>xmin, xmax = -(0.7454297), -(0.7454287)  # Adjust X-axis boundaries
+ymin, ymax = -(0.1130148), -(0.1130135)  # Adjust Y-axis boundaries</code></pre>
+
+    <hr>
+
+    <h2>License</h2>
+    <p>This project is open-source and released for procedural graphics exploration, mathematical visualization, and educational rendering pipelines.</p>
+</body>
+</html>
