@@ -1,0 +1,162 @@
+import bpy
+import bmesh
+import numpy as np
+
+# 1. Parameters for the Mandelbrot Region & Resolution
+resolution = 1280          # Grid resolution (512x512 vertices)
+##xmin, xmax = -1.3, -0.9   # Your current search bounds
+##ymin, ymax = -0.5, -0.10
+##xmin, xmax = -1.204, -1.172   # Your current search bounds
+##ymin, ymax = -0.325, -0.293
+#xmin, xmax = -1.204, -1.172  # Your current search bounds
+#ymin, ymax = -0.325, -0.293
+##xmin, xmax = -1.193, -1.172  # Your current search bounds
+##ymin, ymax = -0.315, -0.29
+## Good: xmin, xmax = -1.195, -1.177  # Your current search bounds
+## Good: ymin, ymax = -0.315, -0.295
+##xmin, xmax = -(0.7454285 - 0.0054285), -(0.7454285 + 0.0054285)  # Your current search bounds
+##ymin, ymax = -(0.1130089 - 0.0054285), -(0.1130089 + 0.0054285)
+
+xmin, xmax = -(0.7454285 - 0.000006), -(0.7454285 + 0.000006)  # Your current search bounds
+ymin, ymax = -(0.1130089 - 0.000006), -(0.1130089 + 0.000006)
+
+
+max_iter = 18000            # Iteration depth for terrain height detail
+displacement_strength = 2.8
+
+# 2. Compute Mandelbrot Heightmap via NumPy
+print("Calculating Mandelbrot heightmap...")
+x = np.linspace(xmin, xmax, resolution)
+y = np.linspace(ymin, ymax, resolution)
+c = x[np.newaxis, :] + 1j * y[:, np.newaxis]
+z = np.zeros_like(c)
+heightmap = np.zeros((resolution, resolution), dtype=np.float32)
+
+for i in range(max_iter):
+    mask = abs(z) <= 10.0
+    z[mask] = z[mask]**2 + c[mask]
+    heightmap[mask] += 1.0
+
+# Normalize and shape heightmap
+heightmap = heightmap / max_iter
+heightmap = np.power(heightmap, 0.65)
+
+# 3. Create Image Data in Blender from Heightmap
+image_name = "MandelbrotHeightMap_Gold"
+if image_name in bpy.data.images:
+    bpy.data.images.remove(bpy.data.images[image_name])
+
+img = bpy.data.images.new(image_name, width=resolution, height=resolution)
+img.pixels = np.repeat(heightmap[::-1].ravel()[:, np.newaxis], 4, axis=1).ravel()
+img.pack()
+
+# 4. Create Second Grid Mesh Object (Dedicated Gold Mini-Mandelbrot Object)
+terrain_size = 24.0
+bpy.ops.mesh.primitive_grid_add(
+    x_subdivisions=resolution - 1,
+    y_subdivisions=resolution - 1,
+    size=terrain_size,
+    location=(30.0, 0, 0)  # Offset slightly to the side of the first object
+)
+obj_gold = bpy.context.active_object
+obj_gold.name = "MiniMandelbrot_Gold_Terrain"
+
+# 5. Add Subdivision Surface & Displace Modifiers to Gold Object
+subdiv_mod = obj_gold.modifiers.new(name="TerrainSubsurf", type='SUBSURF')
+subdiv_mod.subdivision_type = 'SIMPLE'
+subdiv_mod.levels = 1
+subdiv_mod.render_levels = 2
+
+tex = bpy.data.textures.new("MandelbrotTex_Gold", type='IMAGE')
+tex.image = img
+
+disp_mod = obj_gold.modifiers.new(name="TerrainDisplace", type='DISPLACE')
+disp_mod.texture = tex
+disp_mod.texture_coords = 'UV'
+disp_mod.strength = displacement_strength
+disp_mod.direction = 'Z'
+
+# Set smooth shading
+for p in obj_gold.data.polygons:
+    p.use_smooth = True
+
+# 6. Create & Assign High-End Gold Material (Principled BSDF + Metallic Sheen)
+mat_name = "MandelbrotGoldMaterial"
+mat_gold = bpy.data.materials.get(mat_name)
+if mat_gold is None:
+    mat_gold = bpy.data.materials.new(name=mat_name)
+mat_gold.use_nodes = True
+nodes = mat_gold.node_tree.nodes
+links = mat_gold.node_tree.links
+nodes.clear()
+
+# Create Shader Nodes for Gold
+node_out = nodes.new(type='ShaderNodeOutputMaterial')
+node_out.location = (800, 0)
+
+node_bsdf = nodes.new(type='ShaderNodeBsdfPrincipled')
+node_bsdf.location = (500, 0)
+node_bsdf.inputs['Metallic'].default_value = 1.0     # Full metallic gold
+node_bsdf.inputs['Roughness'].default_value = 0.25   # Polished metallic finish
+
+node_ramp = nodes.new(type='ShaderNodeValToRGB')
+node_ramp.location = (200, 0)
+# Configure Color Ramp for rich metallic gold variations (shadows to bright gold highlights)
+node_ramp.color_ramp.elements[0].position = 0.1
+node_ramp.color_ramp.elements[0].color = (0.35, 0.22, 0.04, 1.0) # Deep antique gold
+node_ramp.color_ramp.elements.new(0.5)
+node_ramp.color_ramp.elements[1].position = 0.55
+node_ramp.color_ramp.elements[1].color = (0.85, 0.65, 0.13, 1.0) # Rich metallic gold
+node_ramp.color_ramp.elements[2].position = 0.9
+node_ramp.color_ramp.elements[2].color = (1.0, 0.92, 0.55, 1.0) # Bright reflective highlight
+
+node_tex_image = nodes.new(type='ShaderNodeTexImage')
+node_tex_image.location = (-100, 0)
+node_tex_image.image = img
+
+# Mapping Node for transform control
+node_mapping = nodes.new(type='ShaderNodeMapping')
+node_mapping.location = (-350, 0)
+
+# Texture Coordinate Node
+node_uv = nodes.new(type='ShaderNodeTexCoord')
+node_uv.location = (-600, 0)
+
+# Link Nodes Together
+links.new(node_uv.outputs['UV'], node_mapping.inputs['Vector'])
+links.new(node_mapping.outputs['Vector'], node_tex_image.inputs['Vector'])
+links.new(node_tex_image.outputs['Color'], node_ramp.inputs['Fac'])
+links.new(node_ramp.outputs['Color'], node_bsdf.inputs['Base Color'])
+links.new(node_bsdf.outputs['BSDF'], node_out.inputs['Surface'])
+
+# Assign gold material to the new gold object
+if obj_gold.data.materials:
+    obj_gold.data.materials[0] = mat_gold
+else:
+    obj_gold.data.materials.append(mat_gold)
+
+# 7. Add 3D Coordinate Text Markers for the Gold Object
+marker_grid = 6
+for ix in range(marker_grid):
+    for iy in range(marker_grid):
+        u = ix / (marker_grid - 1)
+        v = iy / (marker_grid - 1)
+        
+        curr_x = xmin + u * (xmax - xmin)
+        curr_y = ymin + v * (ymax - ymin)
+        
+        world_x = 30.0 + (u - 0.5) * terrain_size
+        world_y = (v - 0.5) * terrain_size
+        
+        h_idx_x = int(u * (resolution - 1))
+        h_idx_y = int(v * (resolution - 1))
+        h_val = float(heightmap[h_idx_y, h_idx_x]) * displacement_strength + 0.8
+        
+        bpy.ops.object.text_add(location=(world_x, world_y, h_val))
+        t_obj = bpy.context.active_object
+        t_obj.name = f"Gold_Coord_{curr_x:.3f}_{curr_y:.3f}"
+        t_obj.data.body = f"X:{curr_x:.3f}\nY:{curr_y:.3f}"
+        t_obj.data.size = 0.5
+        t_obj.data.align_x = 'CENTER'
+
+print("Gold Mandelbrot terrain object, texture, mapping, and gold shader material created successfully!")
